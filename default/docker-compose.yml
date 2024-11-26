@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   rabbit:
     image: rabbitmq:4.0-management
@@ -33,13 +35,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 20s
     deploy:
       resources:
         limits:
           memory: 700m
     environment:
-      SPRING_RABBITMQ_HOST: "rabbit" # Inherited from common-config.yml
+      SPRING_RABBITMQ_HOST: "rabbit"
+      SPRING_RABBITMQ_PORT: 5672
 
   crypto:
     image: "stallion49/crypto:v1"
@@ -56,11 +59,14 @@ services:
         limits:
           memory: 700m
     environment:
+      SPRING_RABBITMQ_HOST: "rabbit"
+      SPRING_RABBITMQ_PORT: 5672
       SPRING_PROFILE_ACTIVE: default
       SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
       SPRING_APPLICATION_NAME: "crypto"
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
-      SPRING_CLOUD_CONFIG_FAIL_FAST: true
+#      SPRING_CLOUD_CONFIG_FAIL_FAST: true
+      SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
 
 networks:
   project:
