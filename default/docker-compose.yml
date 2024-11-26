@@ -1,0 +1,67 @@
+services:
+  rabbit:
+    image: rabbitmq:4.0-management
+    hostname: rabbitmq
+    networks:
+      - project
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+
+  configserver:
+    image: "stallion49/config-server:v1"
+    container_name: configserver
+    ports:
+      - "8071:8071"
+    networks:
+      - project
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent localhost:8071/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    environment:
+      SPRING_RABBITMQ_HOST: "rabbit" # Inherited from common-config.yml
+
+  crypto:
+    image: "stallion49/crypto:v1"
+    container_name: crypto
+    ports:
+      - "8080:8080"
+    networks:
+      - project
+    depends_on:
+      configserver:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    environment:
+      SPRING_PROFILE_ACTIVE: default
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_APPLICATION_NAME: "crypto"
+      SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
+      SPRING_CLOUD_CONFIG_FAIL_FAST: true
+
+networks:
+  project:
+    driver: "bridge"
