@@ -1,35 +1,13 @@
 version: "3.9"
 
 services:
-  rabbit:
-    image: rabbitmq:4.0-management
-    hostname: rabbitmq
-    networks:
-      - project
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: rabbitmq-diagnostics check_port_connectivity
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 5s
-    deploy:
-      resources:
-        limits:
-          memory: 700m
-
   configserver:
-    image: "stallion49/config-server:v1"
+    image: "stallion49/config-server:v2"
     container_name: configserver
     ports:
       - "8071:8071"
     networks:
       - project
-    depends_on:
-      rabbit:
-        condition: service_healthy
     healthcheck:
       test: "curl --fail --silent localhost:8071/actuator/health/readiness | grep UP || exit 1"
       interval: 10s
@@ -40,12 +18,36 @@ services:
       resources:
         limits:
           memory: 700m
-    environment:
-      SPRING_RABBITMQ_HOST: "rabbit"
-      SPRING_RABBITMQ_PORT: 5672
 
+  eurekaserver:
+    image: "stallion49/eurekaserver:v2"
+    container_name: eurekaserver
+    ports:
+      - "8070:8070"
+    networks:
+      - project
+    healthcheck:
+      test: "curl --fail --silent localhost:8070/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+    depends_on:
+      configserver:
+          condition: service_healthy
+    environment:
+      SPRING_PROFILE_ACTIVE: default
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_APPLICATION_NAME: "eurekaserver"
+      SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
+#      SPRING_CLOUD_CONFIG_FAIL_FAST: true
+      SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
   crypto:
-    image: "stallion49/crypto:v1"
+    image: "stallion49/crypto:v2"
     container_name: crypto
     ports:
       - "8080:8080"
@@ -54,22 +56,23 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
     deploy:
       resources:
         limits:
           memory: 700m
     environment:
-      SPRING_RABBITMQ_HOST: "rabbit"
-      SPRING_RABBITMQ_PORT: 5672
       SPRING_PROFILE_ACTIVE: default
       SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
       SPRING_APPLICATION_NAME: "crypto"
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
 #      SPRING_CLOUD_CONFIG_FAIL_FAST: true
       SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka/
 
   exchange:
-    image: "stallion49/exchange:v1"
+    image: "stallion49/exchange:v2"
     container_name: exchange
     ports:
       - "8078:8078"
@@ -78,19 +81,20 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
     deploy:
       resources:
         limits:
           memory: 700m
     environment:
-      SPRING_RABBITMQ_HOST: "rabbit"
-      SPRING_RABBITMQ_PORT: 5672
       SPRING_PROFILE_ACTIVE: default
       SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
       SPRING_APPLICATION_NAME: "exchange"
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
       #      SPRING_CLOUD_CONFIG_FAIL_FAST: true
       SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka/
 
 networks:
   project:
