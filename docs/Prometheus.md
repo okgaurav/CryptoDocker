@@ -1,4 +1,4 @@
-# Grafana
+# Prometheus
 
 - Open-source Platform: Grafana is a free, open-source tool for visualizing and analyzing data.
 - Multi-source Support: Integrates with Prometheus, Loki, MySQL, InfluxDB, and more.
@@ -18,17 +18,15 @@ To deploy this project run
 
 To shutdown gracefully
 ```bash
-  docker compose down[Grafana.md](Grafana.md)
+  docker compose down
 ```
 
     
 ## API Reference
 ```http
-  GET http://localhost:3000/explor/
+  http://localhost:9090/targets?search=
 ```
-```http
-  https://dashboard.hookdeck.com/events?selected_event_id=evt_41uN4bAjiWp3V9Cc3p
-```
+
 ## Tech Stack
 
 **Client:** Angular, Typescript, TailwindCSS
