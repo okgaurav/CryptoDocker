@@ -1,6 +1,17 @@
 version: "3.9"
 
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.2
+    container_name: keycloak
+    ports:
+      - "7080:8080"
+    environment:
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "admin"
+    command: "start-dev"
+    networks:
+      - project
   minio:
     image: minio/minio:RELEASE.2024-05-27T19-17-46Z
     entrypoint:
@@ -235,6 +246,8 @@ services:
       resources:
         limits:
           memory: 700m
+    environment:
+      OTEL_SERVICE_NAME: "configserver"
 
   eurekaserver:
     image: "stallion49/eurekaserver:v2"
@@ -260,6 +273,7 @@ services:
       SPRING_PROFILE_ACTIVE: default
       SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
       SPRING_APPLICATION_NAME: "eurekaserver"
+      OTEL_SERVICE_NAME: "eurekaserver"
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
 #      SPRING_CLOUD_CONFIG_FAIL_FAST: true
       SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
@@ -267,8 +281,8 @@ services:
   crypto:
     image: "stallion49/crypto:v2"
     container_name: crypto
-    ports:
-      - "8080:8080"
+#    ports:
+#      - "8080:8080"
     networks:
       - project
     healthcheck:
@@ -291,6 +305,7 @@ services:
       SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
       SPRING_APPLICATION_NAME: "crypto"
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
+      OTEL_SERVICE_NAME: "crypto"
 #      SPRING_CLOUD_CONFIG_FAIL_FAST: true
       SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka/
@@ -298,8 +313,8 @@ services:
   exchange:
     image: "stallion49/exchange:v2"
     container_name: exchange
-    ports:
-      - "8078:8078"
+#    ports:
+#      - "8078:8078"
     networks:
       - project
     depends_on:
@@ -324,6 +339,7 @@ services:
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
       #      SPRING_CLOUD_CONFIG_FAIL_FAST: true
       SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
+      OTEL_SERVICE_NAME: "exchange"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka/
   gatewayServer:
     image: "stallion49/gateway:v2"
@@ -352,6 +368,8 @@ services:
       SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 6
       #      SPRING_CLOUD_CONFIG_FAIL_FAST: true
       SPRING_LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
+      OTEL_SERVICE_NAME: "gateway"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: "http://keycloak:8080/realms/master/protocol/openid-connect/certs"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka/
 networks:
   project:
